@@ -11363,13 +11363,15 @@ bool XE::processTGLAccelerator(KernelPatcher &patcher, size_t index, mach_vm_add
  // WhateverXeNoCCS: {occurrences, patched}.
  if(checkKernelArgument("-wex-noccs") && currentGraphics) {
   static const uint8_t f[]="EnableMultiContext",r[]="EnableMultiContexX";
+  static_assert(sizeof(f)==sizeof(r),"key and replacement must have the same length");
   uint32_t rec[2] {};
   auto base=reinterpret_cast<const uint8_t *>(address);
   const uint8_t *site=nullptr;
   for(size_t i=0;size>=sizeof(f) && i<=size-sizeof(f);i++)
-   if(base[i]=='E' && !memcmp(base+i,f,sizeof(f))) {rec[0]++;site=base+i;}
+   if(base[i]=='E' && (i==0 || base[i-1]==0) && !memcmp(base+i,f,sizeof(f))) {rec[0]++;site=base+i;} // whole string only
   if(rec[0]==1) {
    KernelPatcher::LookupPatch patch {currentGraphics,f,r,sizeof(f),1};
+   patcher.clearError(); // a stale error must not turn a good patch into {1,0}
    patcher.applyLookupPatch(&patch,const_cast<uint8_t *>(site),sizeof(f)+1); // Lilu needs the window larger than the pattern (as in #163)
    rec[1]=patcher.getError()==KernelPatcher::Error::NoError && !memcmp(site,r,sizeof(r));
   }
